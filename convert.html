@@ -3,7 +3,7 @@
     <head>
         <title>ItauCard 2 YNAB CSV </title>
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-        <script src="//code.jquery.com/jquery-git2.min.js"></script>
+        <script src="https://code.jquery.com/jquery-git2.min.js"></script>
     </head>
     <body>
         <textarea id="fatura-text" name="fatura" cols="80" rows="30" placeholder="Cole o texto da fatura aqui"></textarea>
@@ -16,13 +16,29 @@
             config.newLine = "\n";
             config.commonHeaders = "Date,Payee,Value";
             config.YNABHeaders = "Date,Payee,Category,Memo,Outflow,Inflow";
-            config.populateMatches = function(fatura){
-                var regex = /(\d*\/\d*)\t(.*)\t(-?\d*,\d*)/g;
+            config.populateMatches = function(pdftext){
+                var regex = [/(\d+\/\d{2})\t(.*)\t(-?\s?\d+,\d{2})/g,
+				             /.*\D(\d+\/\d{2})\s(.*)\s(-?\s?\d+,\d{2}).*/g,
+                             /(.*)\s(-?\s?\d+,\d{2})\s(\d+\/\d{2})\s(.*)/g];
                 var match = null;
+				var fatura = pdftext!=null? pdftext:"";
+                while((match = regex[1].exec(fatura)) !== null){
+                    $("#result").append(match[1]+"\t"+match[2]+"\t"+match[3]);
+                    $("#result").append(config.newLine);
+                }
+				var fatura1 = $("#result").html();
+				$("#result").html("");
+                while((match = regex[2].exec(fatura1)) !== null){
+                    $("#result").append(match[1]+"\t"+match[2]);
+					$("#result").append(config.newLine);
+					$("#result").append(match[3]+"\t"+match[4]);
+                }
+				var fatura2 = $("#result").html();
+				$("#result").html("");
                 $("#fatura-converted").append(config.YNABHeaders);
                 $("#fatura-converted").append(config.newLine)
                 var year = new Date().getFullYear();
-                while((match = regex.exec(fatura)) !== null){
+                while((match = regex[0].exec(fatura2)) !== null){
                     $("#fatura-converted").append(match[1]+"/"+year+","+match[2]+",,,");
                     if(match[3].indexOf("-") == -1){
                         $("#fatura-converted").append(match[3].replace(",",".")+",");
