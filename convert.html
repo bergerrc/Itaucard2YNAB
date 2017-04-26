@@ -8,37 +8,54 @@
     <body>
         <textarea id="fatura-text" name="fatura" cols="80" rows="30" placeholder="Cole o texto da fatura aqui"></textarea>
         <textarea id="fatura-converted" name="fatura" cols="80" rows="30" placeholder="O CSV aparecerá aqui.."></textarea>
+		<textarea id="fatura-converted-csv" name="fatura" cols="80" rows="30" placeholder="O CSV também aparecerá aqui.."></textarea>
         <br />
         <div id="result"></div>
         <script>
             config = {};
             config.linePattern = "";
             config.newLine = "\n";
-            config.commonHeaders = "Date,Payee,Value";
+            config.commonHeaders = "Date;Payee;Debit;Credit";
             config.YNABHeaders = "Date,Payee,Category,Memo,Outflow,Inflow";
             config.populateMatches = function(pdftext){
-                var regex = [/(\d+\/\d{2})\t(.*)\t(-?\s?\d+,\d{2})/g,
+			    var LIMIT=10;
+				var runs=0;
+                var regex = [/(\d+\/\d{2})\t(.*)\t((-?)(\s?\d+),(\d{2}))/g,
 				             /.*\D(\d+\/\d{2})\s(.*)\s(-?\s?\d+,\d{2}).*/g,
-                             /(.*)\s(-?\s?\d+,\d{2})\s(\d+\/\d{2})\s(.*)/g];
+                             /(.*) (-?\s?\d+,\d{2}) (\d+\/\d{2}) (.*)/g,
+							 /(-;|;-)(.*);/g];
                 var match = null;
 				var fatura = pdftext!=null? pdftext:"";
                 while((match = regex[1].exec(fatura)) !== null){
                     $("#result").append(match[1]+"\t"+match[2]+"\t"+match[3]);
                     $("#result").append(config.newLine);
                 }
-				var fatura1 = $("#result").html();
+				fatura = $("#result").html();
 				$("#result").html("");
-                while((match = regex[2].exec(fatura1)) !== null){
-                    $("#result").append(match[1]+"\t"+match[2]);
-					$("#result").append(config.newLine);
-					$("#result").append(match[3]+"\t"+match[4]);
-                }
-				var fatura2 = $("#result").html();
-				$("#result").html("");
+				while ( regex[2].test(fatura) && runs <= LIMIT){
+				  fatura = fatura.replace(regex[2],"$1\t$2\r\n$3\t$4");
+				  runs++;
+				}
+				runs=0;
+				
+                var year = new Date().getFullYear();
+				var faturaCSV = fatura;
+                $("#fatura-converted-csv").append(config.commonHeaders);
+                $("#fatura-converted-csv").append(config.newLine)
+				while ( regex[0].test(faturaCSV) && runs <= LIMIT){
+				  faturaCSV = faturaCSV.replace(regex[0],"$1/"+year+";$2;$4$5.$6;");
+				  runs++;
+				}
+				runs=0;
+				while ( regex[3].test(faturaCSV) && runs <= LIMIT){
+				  faturaCSV = faturaCSV.replace(regex[3],";;$2");
+				  runs++;
+				}
+				$("#fatura-converted-csv").append(faturaCSV);
+				
                 $("#fatura-converted").append(config.YNABHeaders);
                 $("#fatura-converted").append(config.newLine)
-                var year = new Date().getFullYear();
-                while((match = regex[0].exec(fatura2)) !== null){
+                while((match = regex[0].exec(fatura)) !== null){
                     $("#fatura-converted").append(match[1]+"/"+year+","+match[2]+",,,");
                     if(match[3].indexOf("-") == -1){
                         $("#fatura-converted").append(match[3].replace(",",".")+",");
